@@ -22,7 +22,7 @@ type Program struct {
 
 func (p *Program) TokenLiteral() string {
 	if len(p.Statements) > 0 {
-		return p.Statements[0].TokenLiteral() // why only call tokenliteral on the first statement
+		return p.Statements[0].TokenLiteral() // why only call tokenliteral on the first statement?
 	} else {
 		return ""
 	}
