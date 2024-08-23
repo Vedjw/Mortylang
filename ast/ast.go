@@ -20,9 +20,11 @@ type Program struct {
 	Statements []Statement // This is an array of structs which can hold any values that implement the Statement interface
 }
 
-func (p *Program) TokenLiteral() string {
+func (p *Program) TokenLiteral() string { // why only call tokenliteral on the first statement?
 	if len(p.Statements) > 0 {
-		return p.Statements[0].TokenLiteral() // why only call tokenliteral on the first statement?
+		// the implementation of this method is determined dynamically,
+		// depending upon the TokenType of the first statement
+		return p.Statements[0].TokenLiteral()
 	} else {
 		return ""
 	}
@@ -44,7 +46,21 @@ type Identifier struct {
 	Value string      // Literal
 }
 
+// the ident is treated as an expression so it can be evaluated as one
+// Ex. a + 5
 func (i *Identifier) expressionNode() {}
+
 func (i *Identifier) TokenLiteral() string {
 	return i.Token.Literal
+}
+
+type ReturnStatement struct {
+	Token       token.Token
+	ReturnValue Expression
+}
+
+func (rs *ReturnStatement) statementNode() {}
+
+func (rs *ReturnStatement) TokenLiteral() string {
+	return rs.Token.Literal
 }
