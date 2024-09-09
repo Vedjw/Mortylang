@@ -12,11 +12,18 @@ type Parser struct {
 	curToken  token.Token
 	peekToken token.Token
 	errors    []string
+
+	prefixParseFns map[token.TokenType]prefixParseFn
+	infixParseFns  map[token.TokenType]infixParseFn
 }
 
 func New(l *lexer.Lexer) *Parser { // New functions are used to initialize a new obj of Parser
 	p := &Parser{lex: l, errors: []string{}}
 	p.nextToken()
+
+	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
+
 	return p
 }
 
@@ -59,7 +66,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement()
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
 }
 
@@ -85,7 +92,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 }
 
 func (p *Parser) curTokenIs(t token.TokenType) bool {
-	return p.peekToken.Type == t
+	return p.curToken.Type == t
 }
 
 func (p *Parser) peekTokenIs(t token.TokenType) bool {
@@ -112,4 +119,67 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	}
 
 	return stmt
+}
+
+func printRetValue(p *ast.Program) {
+
+	returnStmt, ok := p.Statements[0].(*ast.ReturnStatement)
+	if !ok {
+		fmt.Printf("The first statement is not a return statement, got %T\n", p.Statements[0])
+	} else {
+		fmt.Printf("Return value: %v\n", returnStmt.ReturnValue)
+	}
+
+}
+
+type (
+	prefixParseFn func() ast.Expression
+	infixParseFn  func(ast.Expression) ast.Expression
+)
+
+func (p *Parser) registerPrefix(tokentype token.TokenType, fn prefixParseFn) {
+	p.prefixParseFns[tokentype] = fn
+}
+
+func (p *Parser) registerInfix(tokentype token.TokenType, fn infixParseFn) {
+	p.infixParseFns[tokentype] = fn
+}
+
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{Token: p.curToken}
+
+	p.nextToken()
+
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	for !p.curTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+const (
+	_      int = iota // value is 0
+	LOWEST            // value from 0 to 7 is assigned to each
+	EQUALS
+	LESSGREATER
+	SUM
+	PRODUCT
+	PREFIX
+	CALL
+)
+
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	prefixFn := p.prefixParseFns[p.curToken.Type]
+	if prefixFn == nil {
+		return nil
+	}
+	leftExp := prefixFn()
+
+	return leftExp
+}
+
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
