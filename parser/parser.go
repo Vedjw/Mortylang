@@ -21,6 +21,7 @@ type Parser struct {
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{lex: l, errors: []string{}}
 	p.nextToken()
+	p.nextToken()
 
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
