@@ -7,7 +7,7 @@ import (
 
 func TestNextToken(t *testing.T) {
 	input :=
-		`let five = 5;
+		`let num1 = 5;
 	let ten = 10;
 	   let add = fn(x, y) {
 		 x + y;
@@ -21,14 +21,18 @@ func TestNextToken(t *testing.T) {
 		return false;
 	}
 	10 == 10;
-	10 != 9;`
+	10 != 9;
+	"foobar"
+	"foo bar"
+	[1, 2];
+	`
 
 	tests := []struct {
 		expectedType    token.TokenType
 		expectedLiteral string
 	}{
 		{token.LET, "let"},
-		{token.IDENT, "five"},
+		{token.IDENT, "num1"},
 		{token.ASSIGN, "="},
 		{token.INT, "5"},
 		{token.SEMICOLON, ";"},
@@ -99,6 +103,14 @@ func TestNextToken(t *testing.T) {
 		{token.INT, "10"},
 		{token.NOTEQUALTO, "!="},
 		{token.INT, "9"},
+		{token.SEMICOLON, ";"},
+		{token.STRING, "foobar"},
+		{token.STRING, "foo bar"},
+		{token.LBRACKET, "["},
+		{token.INT, "1"},
+		{token.COMMA, ","},
+		{token.INT, "2"},
+		{token.RBRACKET, "]"},
 		{token.SEMICOLON, ";"},
 		{token.EOF, ""},
 	}

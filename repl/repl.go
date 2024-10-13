@@ -8,22 +8,24 @@ import (
 	"morty/lexer"
 	"morty/object"
 	"morty/parser"
+	"morty/read"
 )
 
-const PROMPT = ">> "
-
-func Start(in io.Reader, out io.Writer) {
-	scanner := bufio.NewScanner(in)
+func Start(file *bufio.Reader, out io.Writer) {
 	env := object.NewEnvironment()
+	io.WriteString(out, "RESULTS:\n")
 
 	for {
-		fmt.Print(PROMPT)
-		scanned := scanner.Scan()
-		if !scanned {
+
+		line, isPrefix, err := read.Readln(file)
+		if err != nil {
+			return
+		}
+		if isPrefix {
+			fmt.Printf("Line length exceeded")
 			return
 		}
 
-		line := scanner.Text() // We go line by line as this an interprter
 		l := lexer.New(line)
 		p := parser.New(l)
 

@@ -539,7 +539,7 @@ func TestIfElseExpression(t *testing.T) {
 }
 
 func TestFunctionLiteralParsing(t *testing.T) {
-	input := `fn(x, y) { x + y; }`
+	input := `fn add(x, y) { x + y; }`
 
 	l := lexer.New(input)
 	p := New(l)
@@ -558,6 +558,10 @@ func TestFunctionLiteralParsing(t *testing.T) {
 	function, ok := stmt.Expression.(*ast.FunctionLiteral)
 	if !ok {
 		t.Fatalf("stmt.Expression is not ast.FunctionLiteral, got=%T", stmt.Expression)
+	}
+
+	if function.Name.Value != "add" {
+		t.Fatalf("function name not equal to expected=%q, got=%q", "add", function.Name.Value)
 	}
 
 	if len(function.Parameters) != 2 {
@@ -682,3 +686,22 @@ func TestLetStatementFinal(t *testing.T) {
 }
 
 // todo write TestReturnStatementFinal and testReturnStatement
+
+func TestStringLiteralExpression(t *testing.T) {
+	input := `"hello world"`
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	literal, ok := stmt.Expression.(*ast.StringLiteral)
+	if !ok {
+		t.Fatalf("exp not StringLiteral, got=%T", stmt.Expression)
+	}
+
+	if literal.Value != "hello world" {
+		t.Errorf("literal.Value not %q, got=%q", "hello world", literal.Value)
+	}
+}

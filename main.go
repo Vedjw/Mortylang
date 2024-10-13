@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"morty/repl"
 	"os"
 	"os/user"
+	"regexp"
 )
 
 func main() {
@@ -14,6 +16,33 @@ func main() {
 	}
 
 	fmt.Printf("Hello %s! This is the Morty programming language!\n", user.Name)
-	fmt.Printf("Feel free to type in commands\n")
-	repl.Start(os.Stdin, os.Stdout)
+	fmt.Printf("Type name of the file to execute\n")
+
+	var input string
+	fmt.Scanln(&input)
+	if !isMorty(input) {
+		fmt.Printf("%s is not a morty file ", input)
+		os.Exit(1)
+	}
+
+	filename := fmt.Sprintf("/Users/vedwalvekar/Coding/morty/programs/%s", input)
+
+	inFile, err := os.Open(filename)
+	if err != nil {
+		fmt.Printf("Error opening the %s ", filename)
+		os.Exit(1)
+	}
+	defer inFile.Close()
+	r := bufio.NewReader(inFile)
+
+	repl.Start(r, os.Stdout)
+}
+
+func isMorty(name string) bool {
+	matched, err := regexp.MatchString(".morty", name)
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	return matched
 }

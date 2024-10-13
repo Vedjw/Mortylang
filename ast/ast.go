@@ -218,6 +218,7 @@ func (bs *BlockStatement) ToString() string {
 
 type FunctionLiteral struct {
 	Token      token.Token // fn token
+	Name       *Identifier
 	Parameters []*Identifier
 	Body       *BlockStatement
 }
@@ -264,3 +265,12 @@ func (ce *CallExpression) ToString() string {
 
 	return out.String()
 }
+
+type StringLiteral struct {
+	Token token.Token
+	Value string
+}
+
+func (str *StringLiteral) expressionNode()      {}
+func (str *StringLiteral) TokenLiteral() string { return str.Token.Literal }
+func (str *StringLiteral) ToString() string     { return str.Token.Literal }

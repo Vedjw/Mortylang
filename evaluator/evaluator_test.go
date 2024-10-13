@@ -187,6 +187,14 @@ func TestErrorHandling(t *testing.T) {
 		input           string
 		expectedMessage string
 	}{
+		{`
+		if (10 > 1) { 
+			if (10 > 1) {
+				return true + false;
+			}
+			return 1;
+		}
+		`, "unknown operator: BOOLEAN + BOOLEAN"},
 		{
 			"5 + true;",
 			"type mismatch: INTEGER + BOOLEAN",
@@ -211,17 +219,13 @@ func TestErrorHandling(t *testing.T) {
 			"if (10 > 1) { true + false; }",
 			"unknown operator: BOOLEAN + BOOLEAN",
 		},
-		{`
-		if (10 > 1) { 
-			if (10 > 1) {
-				return true + false;
-			}
-			return 1;
-		}
-		`, "unknown operator: BOOLEAN + BOOLEAN"},
 		{
 			"foobar",
 			"identifier not found: foobar",
+		},
+		{
+			`"Hello" - "World"`,
+			"unknown operator: STRING - STRING",
 		},
 	}
 
@@ -255,7 +259,7 @@ func TestLetStatements(t *testing.T) {
 }
 
 func TestFunctionObject(t *testing.T) {
-	input := "fn(x) { x + 2; };"
+	input := "fn add(x) { x + 2; };"
 
 	evaluated := testEval(input)
 
@@ -263,7 +267,11 @@ func TestFunctionObject(t *testing.T) {
 	if !ok {
 		t.Fatalf("object is not a Funtion, got=%T (%+v)", evaluated, evaluated)
 	}
-
+	if fn.Name != nil {
+		if fn.Name.Value != "add" {
+			t.Fatalf("function name not equal to expected=%q, got=%q", "add", fn.Name.Value)
+		}
+	}
 	if len(fn.Parameters) != 1 {
 		t.Fatalf("function has wrong parameters, got Parameters=%+v", fn.Parameters)
 	}
@@ -303,4 +311,91 @@ func TestClosures(t *testing.T) {
 	addTwo(2);`
 
 	testIntegerObject(t, testEval(input), 4)
+}
+
+func TestStringLiteral(t *testing.T) {
+	input := `"Hello World!"`
+
+	evaluated := testEval(input)
+
+	str, ok := evaluated.(*object.String)
+	if !ok {
+		t.Fatalf("object is not String. got=%T (%+v)", evaluated, evaluated)
+	}
+
+	if str.Value != "Hello World!" {
+		t.Errorf("String has wrong value. got=%q", str.Value)
+	}
+}
+
+func TestStringConcatenation(t *testing.T) {
+	input := `"Hello" + " " + "World!"`
+
+	evaluated := testEval(input)
+
+	str, ok := evaluated.(*object.String)
+	if !ok {
+		t.Fatalf("object is not String, got=%T (%+v)", evaluated, evaluated)
+	}
+
+	if str.Value != "Hello World!" {
+		t.Errorf("String has wrong value, got=%q", str.Value)
+	}
+}
+
+func TestStringComparisons(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{`"Hello" == "Hello"`, true},
+		{`"Hello" != "Hello"`, false},
+		{`"Hello" == "World"`, false},
+		{`"Hello" != "World"`, true},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+
+		Bool, ok := evaluated.(*object.Boolean)
+		if !ok {
+			t.Fatalf("Bool is not a Boolean object, got=%T", evaluated)
+		}
+
+		Val := Bool.Value
+		if Val != tt.expected {
+			t.Errorf("Wrong bool value, expected=%t, got=%t", tt.expected, Val)
+		}
+	}
+}
+
+func TestBuiltinFunctions(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{`len("")`, 0},
+		{`len("four")`, 4},
+		{`len("hello world")`, 11},
+		{`len(1)`, "argument to `len` not supported, got INTEGER"},
+		{`len("one", "two")`, "wrong number of arguments. got=2, want=1"},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+
+		switch expected := tt.expected.(type) {
+		case int:
+			testIntegerObject(t, evaluated, int64(expected))
+		case string:
+			errObj, ok := evaluated.(*object.Error)
+			if !ok {
+				t.Errorf("object is not Error, got=%T (%+v)", evaluated, evaluated)
+				continue
+			}
+			if errObj.Message != expected {
+				t.Errorf("wrong error message, expected=%q, got=%q", expected, errObj.Message)
+			}
+		}
+	}
 }

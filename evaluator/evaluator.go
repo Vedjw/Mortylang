@@ -67,10 +67,13 @@ func Eval(node ast.Noder, env *object.Environment) object.Object {
 	case *ast.Identifier:
 		return evalIdentifier(node, env)
 
-	case *ast.FunctionLiteral: // Note: when evaling function decleration we only make an funcLit object
-		params := node.Parameters
-		body := node.Body
-		return &object.Function{Parameters: params, Body: body, Env: env}
+	case *ast.FunctionLiteral:
+		funcLit_obj := evalFunctionLiteral(node, env) // Note: when evaling function decleration we only make an funcLit object
+		if node.Name != nil {
+			env.Set(node.Name.Value, funcLit_obj)
+			return nil
+		}
+		return funcLit_obj
 
 	case *ast.CallExpression: // when evaling func call we actually eval the funcLit obj
 		function := Eval(node.Function, env)
@@ -83,6 +86,9 @@ func Eval(node ast.Noder, env *object.Environment) object.Object {
 		}
 
 		return applyFunction(function, args)
+
+	case *ast.StringLiteral:
+		return &object.String{Value: node.Value}
 	}
 
 	return nil
@@ -157,12 +163,19 @@ func evalInfixExpression(operator string, leftExp object.Object, rightExp object
 	switch {
 	case leftExp.Type() == object.INTEGER_OBJ && rightExp.Type() == object.INTEGER_OBJ:
 		return evalIntegerInfixExpression(operator, leftExp, rightExp)
+
+	case leftExp.Type() == object.STRING_OBJ && rightExp.Type() == object.STRING_OBJ:
+		return evalStringInfixExpression(operator, leftExp, rightExp)
+
 	case operator == "==":
 		return ToBoolObject(leftExp == rightExp) // left and right both point to either TRUE or FALSE structs
+
 	case operator == "!=":
 		return ToBoolObject(leftExp != rightExp)
+
 	case leftExp.Type() != rightExp.Type():
 		return newError("type mismatch: %s %s %s", leftExp.Type(), operator, rightExp.Type())
+
 	default:
 		return newError("unknown operator: %s %s %s", leftExp.Type(), operator, rightExp.Type())
 	}
@@ -252,12 +265,15 @@ func isError(obj object.Object) bool {
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
-	val, ok := env.Get(node.Value)
-	if !ok {
-		return newError("identifier not found: " + node.Value)
+	if val, ok := env.Get(node.Value); ok {
+		return val
 	}
 
-	return val
+	if builtin, ok := builtins[node.Value]; ok {
+		return builtin
+	}
+
+	return newError("identifier not found: " + node.Value)
 }
 
 func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Object {
@@ -275,15 +291,19 @@ func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Ob
 }
 
 func applyFunction(fn object.Object, args []object.Object) object.Object {
-	function, ok := fn.(*object.Function)
-	if !ok {
+	switch fn := fn.(type) {
+
+	case *object.Function:
+		extendedEnv := setFunctionEnv(fn, args)
+		evaluated := Eval(fn.Body, extendedEnv)
+		return unwrapReturnValue(evaluated)
+
+	case *object.Builtin:
+		return fn.Fn(args...)
+
+	default:
 		return newError("not a function: %s", fn.Type())
 	}
-
-	extendedEnv := setFunctionEnv(function, args)
-	evaluated := Eval(function.Body, extendedEnv)
-
-	return unwrapReturnValue(evaluated)
 }
 
 func setFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
@@ -302,4 +322,32 @@ func unwrapReturnValue(obj object.Object) object.Object {
 	}
 
 	return obj
+}
+
+func evalStringInfixExpression(operator string, left, right object.Object) object.Object {
+
+	leftVal := left.(*object.String).Value
+	rightVal := right.(*object.String).Value
+
+	switch operator {
+	case "+":
+		return &object.String{Value: leftVal + rightVal}
+
+	case "!=":
+		return ToBoolObject(leftVal != rightVal)
+
+	case "==":
+		return ToBoolObject(leftVal == rightVal)
+
+	default:
+		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+	}
+
+}
+
+func evalFunctionLiteral(funcLit *ast.FunctionLiteral, env *object.Environment) object.Object {
+	params := funcLit.Parameters
+	body := funcLit.Body
+	name := funcLit.Name
+	return &object.Function{Parameters: params, Name: name, Body: body, Env: env}
 }
