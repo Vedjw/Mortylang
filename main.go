@@ -21,11 +21,11 @@ func main() {
 	var input string
 	fmt.Scanln(&input)
 	if !isMorty(input) {
-		fmt.Printf("%s is not a morty file ", input)
+		fmt.Printf("%s is not a .morty file ", input)
 		os.Exit(1)
 	}
 
-	filename := fmt.Sprintf("/Users/vedwalvekar/Coding/morty/programs/%s", input)
+	filename := input
 
 	inFile, err := os.Open(filename)
 	if err != nil {
