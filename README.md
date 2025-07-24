@@ -1,4 +1,4 @@
-# Mortylang 🧪
+# Mortylang
 
 **Mortylang** is a custom programming language interpreter built in Go, inspired by [Thorsten Ball's](https://interpreterbook.com/) _Writing an Interpreter in Go_. It implements a minimal, expressive language with a JavaScript/Python-like syntax and Lisp-style features.
 
